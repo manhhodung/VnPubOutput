@@ -1,28 +1,27 @@
 
-## 1. Total of publication in Vietnam (type=Article,Source=Journal, Language
-## = English)
-#Purely dosmetic articles
-dos <- read.csv("C:/Users/Manh/Desktop/Dropbox/My research/Scientific outputs in VN/Data/overview/dos.csv")
-dos <- read.csv("C:/Users/Manh/Dropbox/My research/Scientific outputs in VN/Data/overview/dos.csv")
-#dos<-subset(dos,dos$Year>1995)
-names(dos)
+## 1. Total of publication in Vietnam (Scopus 26 June, year 1996-2013type=Article,
+## Source=Journal, Language= English)
 
-nrow(subset(dos,dos$Year<2005))
-nrow(subset(dos,dos$Year>2004))
 
 # Total article
-total <- read.csv("C:/Users/Manh/Desktop/Dropbox/My research/Scientific outputs in VN/Data/overview/total.csv")
-total <- read.csv("C:/Users/Manh/Dropbox/My research/Scientific outputs in VN/Data/overview/total.csv")
-#total<-subset(total,total$Year>1995)
+TotPub <- read.csv("C:/Users/Manh/Desktop/Dropbox/VnPubOutput/Data/total.csv")
+#total <- read.csv("C:/Users/Manh/Dropbox/VnPubOutput/Data/total.csv")
+
+
+#Purely dosmetic articles
+DosPub <- read.csv("C:/Users/Manh/Desktop/Dropbox/VnPubOutput/Data/dos.csv")
+#dos <- read.csv("C:/Users/Manh/Dropbox/VnPubOutput/Data/dos.csv")
 
 # Find the collaboration articles by subtract total to dosmetic
 
-#Build a function to find posititon of pure dosmetic articles from total file
-#by EID number
-totalcha<-as.character(total$EID)
-doscha<-as.character(dos$EID)
-col<-function(x,y){
-        pos<-NULL
+##Build a function to find posititon of pure dosmetic articles from total file
+#by Electric Indentifier (EID) number, a unique ariticle identifier
+#Transform EID factor into character class
+TotEID<-as.character(TotPub$EID)
+DosEID<-as.character(DosPub$EID)
+#Write a function  to find position of EID in total that match EID in dosmetic
+fun1<-function(x,y){
+        pos<-NULL 
         for (i in 1:length(x)){
                 for (j in 1:length(y)){
                         if (x[i]==y[j]){
@@ -32,35 +31,39 @@ col<-function(x,y){
         }
         pos
 }
-pos<-col(totalcha,doscha)
-colla<-total[-pos,] 
-write.csv(colla,"collaboration.csv")
-#File already
-collabo <- read.csv("C:/Users/Manh/Desktop/Dropbox/My research/Scientific outputs in VN/Data/overview/collaboration.csv")
+#Applying the function to find positon of dosmetic EID in total publication
+PosEID<-fun1(TotEID,DosEID)
 
+#Publication by collaboration = total pub - dosmetic pub
+Collabo<-TotPub[-PosEID,] 
 
-nrow(subset(collabo,collabo$Year<2005))
-nrow(subset(collabo,collabo$Year>2004))
 
 ##2. Building data frame for article  by year       
 
-output<-data.frame(table(total$Year))
-output
-#dosmetic papers
-dosoutput<-data.frame(table(dos$Year))
-dosoutput
+#Number of total publication by year
+TotYear<-data.frame(table(TotPub$Year))
+#output<-data.frame(table(total$Year))
+TotYear
+#Number of dosmetic publication by year
+DosYear<-data.frame(table(DosPub$Year))
+DosYear
 
-#Combine into output
-colnames(output)<-c("year","total")
-output$dosmetic<-dosoutput$Freq
-output$collaboration<-output$total-output$dosmetic
-# draw plot
+#Combine into Vietnam Publication (VnPub)
+#Assign VnPub as total publication
+VnPub<-TotYear
+#Rename of variable
+colnames(VnPub)<-c("Year","Total")
+#Adding dosmetic publication ot VnPub
+VnPub$Domestic<-DosYear$Freq
+#View VnPub
+VnPub
+
+
 str(output)
 output$year<-as.integer(as.character(output$year))
 library(reshape2)
 Meltoutput<-melt(output,id=c("year"),measure.vars=c("dosmetic","collaboration","total"))
 Meltoutput
-
 library(ggplot2)
 p=ggplot(Meltoutput,aes(year,value,color=variable))
 p+geom_point(size=6)+geom_line(lwd=1)+labs(title="Scientific output in Viet Nam") +
@@ -73,25 +76,31 @@ p+geom_point(size=6)+geom_line(lwd=1)+labs(title="Scientific output in Viet Nam"
         theme(legend.position=c(0.7,0.8))+
         theme(plot.title=element_text(size=30,vjust=3,face="bold"))
         
-        
-        
-        theme(panel.grid.major.x=element_blank())
-
+# draw plot
 #Building a growth rate model in two period (1996-2001) and 2002-2013
-out1<-subset(output,output$year<2002)
-out2<-subset(output,output$year>2001)
-md1<-lm(total~I(year-1996),data=out1)
-md2<-glm(total~I(year-2002),family="poisson",data=out2)
-summary(md1)# y=248+16*t, R2=0.86, t=0 at 1996
-summary(md2)# y=336.5*exp(0.18*t). R2=0.997, t=0 at 1996, increase rate at about ~20%
-#make plot
-plot(output$year,output$total,pch=19,xlab="Year",ylab="Number of publications",at=output$year)
-title(main="Total yearly publication of Vietnam from 1996-2013")
-lines(out1$year,md1$fitted,lwd=2)
-lines(out2$year,md2$fitted,lwd=2)
+#Change Year variable from factor into interger
+VnPub$Year<-as.integer(as.character(VnPub$Year))
+#Vietnam Publication from 1996-2001
+VnPub1<-subset(VnPub,VnPub$Year<2002)
+#Vietnam Publication from 2002 - 2013
+VnPub2<-subset(VnPub,VnPub$Year>2001)
+# Fit a linear regreesion for the first period 
+md1<-lm(Total~I(Year-1996),data=VnPub1)
+summary(md1)
+# Results: y=248+16*t, R2=0.86, t=0 at 1996
 
-# make csv data
-write.csv(output,"data.csv")
+# Fit a generalized linear regreesion for the recent period 
+md2<-glm(Total~I(Year-2002),family="poisson",data=VnPub2)
+summary(md2)
+# y=336.5*exp(0.18*t). R2=0.997, t=0 at 1996,increase rate at about ~20%
+
+#make plot
+plot(VnPub$Year,VnPub$Total,pch=19,xlab="Year",ylab="Number of publications")
+title(main="Total yearly publication of Vietnam from 1996-2013")
+lines(VnPub1$Year,md1$fitted,lwd=2)
+lines(VnPub2$Year,md2$fitted,lwd=2)
+
+
 
 
 
